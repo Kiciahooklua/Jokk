@@ -1,0 +1,850 @@
+pcall(function()
+    local oldtable; oldtable = hookfunction(getrenv().setmetatable, newcclosure(function(Table, Metatable)
+        if Metatable and typeof(Metatable) == "table" and rawget(Metatable, "__mode") == "kv" then
+            local trace = debug.traceback()
+            if trace:find("MiscellaneousController") then
+                return oldtable({1, 2, 3}, {})
+            end
+        end
+        return oldtable(Table, Metatable)
+    end))
+    coroutine.wrap(function()
+        pcall(function()
+            local function blockScript(obj)
+                pcall(function()
+                    if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+                        local ok, n = pcall(function() return obj.Name:lower() end)
+                        if not ok or not n then return end
+                        for _, ac in ipairs({"anticheat", "ac", "detection", "ban", "kick", "security", "moderation"}) do
+                            if n:find(ac) then
+                                pcall(function() obj.Disabled = true end)
+                                break
+                            end
+                        end
+                    end
+                end)
+            end
+            pcall(function()
+                for _, obj in ipairs(game:GetDescendants()) do
+                    blockScript(obj)
+                end
+            end)
+            pcall(function()
+                game.DescendantAdded:Connect(blockScript)
+            end)
+        end)
+        pcall(function()
+            local networkClient = game:GetService("NetworkClient")
+            if networkClient then
+                networkClient.ChildAdded:Connect(function(child)
+                    pcall(function()
+                        local ok, n = pcall(function() return child.Name:lower() end)
+                        if ok and n then
+                            if n:find("anticheat") or n:find("detection") then
+                                pcall(function() child:Destroy() end)
+                            end
+                        end
+                    end)
+                end)
+            end
+        end)
+    end)()
+    pcall(function()
+        local fake = Instance.new("RemoteEvent")
+        fake.Name = "ClientAlert"
+        fake.Parent = LocalPlayer
+    end)
+    pcall(function()
+        local rf = game:GetService("ReplicatedFirst")
+        local ls3 = rf:WaitForChild("LocalScript3", 10)
+        local c = 0
+        for _, f in ipairs(getgc(false)) do
+            if type(f) == "function" then
+                local ok, e = pcall(getfenv, f)
+                if ok and type(e) == "table" then
+                    local ok2, scr = pcall(function() return rawget(e, "script") end)
+                    if ok2 and scr and typeof(scr) == "Instance" then
+                        local ok3, scrStr = pcall(tostring, scr)
+                        if ok3 and (scr == ls3 or (type(scrStr) == "string" and scrStr:find("LoadingScreen"))) then
+                            local ok4, cs = pcall(debug.getconstants, f)
+                            if ok4 and type(cs) == "table" then
+                                for _, k in ipairs(cs) do
+                                    if type(k) == "string" and (k:find("TakeTheL") or k:find("ban") or k:find("kick")) then
+                                        pcall(function()
+                                            hookfunction(f, function() end)
+                                            c = c + 1
+                                        end)
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+pcall(function()
+    if not isfolder("aimmy.win") then makefolder("aimmy.win") end
+    if not isfolder("aimmy.win/settings") then makefolder("aimmy.win/settings") end
+end)
+
+local repo = "https://raw.githubusercontent.com/sickletone/unnamed/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Options = getgenv().Options
+local Toggles = getgenv().Toggles
+
+Library.ShowToggleFrameInKeybinds = true
+Library.ShowCustomCursor = true
+Library.NotifySide = "Left"
+
+local Window = Library:CreateWindow({
+    Title = "aimmy.win",
+    Center = true,
+    AutoShow = true,
+    Resizable = true,
+    ShowCustomCursor = false,
+    UnlockMouseWhileOpen = true,
+    NotifySide = "Left",
+    TabPadding = 8,
+    MenuFadeTime = 0.2
+})
+
+local Tabs = {
+    Main = Window:AddTab("Aimbot"),
+    Settings = Window:AddTab("Settings"),
+}
+
+local AimbotGroup = Tabs.Main:AddLeftGroupbox("Camera Aimbot")
+
+AimbotGroup:AddToggle("IgnoreFOV", {
+    Text = "Ignore FOV",
+    Default = true,
+})
+
+local DepFov = AimbotGroup:AddDependencyBox()
+DepFov:AddSlider("FOVRadius", {
+    Text = "FOV Radius",
+    Default = 282,
+    Min = 25,
+    Max = 500,
+    Rounding = 0,
+    Compact = true,
+})
+DepFov:SetupDependencies({{ Toggles.IgnoreFOV, false }})
+
+AimbotGroup:AddToggle("ShowFOV", {
+    Text = "Show FOV Circle",
+    Default = true,
+})
+
+AimbotGroup:AddDropdown("AimPart", {
+    Values = {"Auto", "Head", "Body", "Closest"},
+    Default = "Auto",
+    Text = "Aim Part",
+})
+
+AimbotGroup:AddDropdown("Priority", {
+    Values = {"Crosshair", "Low Health", "Threat"},
+    Default = "Crosshair",
+    Text = "Target Priority",
+})
+
+AimbotGroup:AddSlider("AimSpeed", {
+    Text = "Aim Speed",
+    Default = 35,
+    Min = 1,
+    Max = 100,
+    Rounding = 0,
+    Compact = true,
+})
+
+AimbotGroup:AddDropdown("Smoothing", {
+    Values = {"Linear", "Exponential", "EaseOut", "Snap"},
+    Default = "Exponential",
+    Text = "Smoothing Mode",
+})
+
+AimbotGroup:AddToggle("Prediction", {
+    Text = "Velocity Prediction",
+    Default = false,
+})
+
+local DepPred = AimbotGroup:AddDependencyBox()
+DepPred:AddSlider("PredictionAmount", {
+    Text = "Prediction Amount",
+    Default = 0.15,
+    Min = 0,
+    Max = 0.5,
+    Rounding = 2,
+    Compact = true,
+})
+DepPred:SetupDependencies({{ Toggles.Prediction, true }})
+
+AimbotGroup:AddToggle("InvertPitch", {
+    Text = "Invert Pitch",
+    Default = false,
+})
+
+AimbotGroup:AddToggle("InvertYaw", {
+    Text = "Invert Yaw",
+    Default = false,
+})
+
+AimbotGroup:AddToggle("CheckKatanaDeflect", {
+    Text = "Check Katana Deflect",
+    Default = true,
+})
+
+AimbotGroup:AddToggle("CheckRiotShield", {
+    Text = "Check Riot Shield",
+    Default = true,
+})
+
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({
+    "MenuKeybind",
+    "SaveManager_ConfigName",
+    "SaveManager_ConfigList",
+})
+
+ThemeManager:SetLibrary(Library)
+ThemeManager:SetFolder("aimmy.win")
+SaveManager:SetFolder("aimmy.win")
+
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyToTab(Tabs.Settings)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LP = Players.LocalPlayer
+local Char, Humanoid, HumanoidRootPart
+local TrackedFightersByPlayer = {}
+local TrackedRangeTargets = {}
+local TrackedPracticeDummies = {}
+local FighterDataCache = {Cache = {}, LocalDuel = {IsInDuel = false, IsInShootingRange = false, Seeded = false}}
+local ReplicatedStateReady = false
+local ReplicatedStateBootStarted = false
+local FighterController = nil
+local EnumLibrary = nil
+local PlayerDataController = nil
+local LocalFighterController = nil
+
+local AimbotVisibilityCache = setmetatable({}, { __mode = 'k' })
+local AIMBOT_VISIBILITY_CACHE_PROFILE = {
+    Id = 'AIMBOT',
+    HiddenWindow = 1/60,
+    VisibleWindow = 0,
+}
+
+local function ResolveEnumLibrary()
+    if EnumLibrary then return EnumLibrary end
+    local modules = game:GetService("ReplicatedStorage"):FindFirstChild("Modules")
+    local module = modules and modules:FindFirstChild("EnumLibrary")
+    if not module then return nil end
+    local ok, lib = pcall(require, module)
+    if not ok then return nil end
+    EnumLibrary = lib
+    return EnumLibrary
+end
+
+local function ResolvePlayerDataController()
+    if PlayerDataController then return PlayerDataController end
+    local playerScripts = LP:FindFirstChild("PlayerScripts")
+    local controllers = playerScripts and playerScripts:FindFirstChild("Controllers")
+    local module = controllers and controllers:FindFirstChild("PlayerDataController")
+    if not module then return nil end
+    local ok, controller = pcall(require, module)
+    if not ok then return nil end
+    PlayerDataController = controller
+    return PlayerDataController
+end
+
+local function IsPlayerDataControllerReady()
+    local controller = ResolvePlayerDataController()
+    return controller ~= nil and controller.CurrentData ~= nil
+end
+
+local function BeginReplicatedStateBoot()
+    if ReplicatedStateBootStarted then return end
+    ReplicatedStateBootStarted = true
+    task.spawn(function()
+        local enumLibrary = ResolveEnumLibrary()
+        if not enumLibrary then return end
+        if type(enumLibrary.WaitForEnumBuilder) == "function" then
+            enumLibrary:WaitForEnumBuilder()
+        elseif enumLibrary._enum_builder_complete ~= true then
+            return
+        end
+        local playerDataController = ResolvePlayerDataController()
+        if not playerDataController then return end
+        if type(playerDataController.WaitUntilLoaded) == "function" then
+            playerDataController:WaitUntilLoaded()
+        elseif not IsPlayerDataControllerReady() then
+            return
+        end
+        task.wait(2)
+        ReplicatedStateReady = true
+    end)
+end
+
+local function ResolveFighterController()
+    if FighterController then return FighterController end
+    if not ReplicatedStateReady then
+        BeginReplicatedStateBoot()
+        return nil
+    end
+    local playerScripts = LP:FindFirstChild("PlayerScripts")
+    local controllers = playerScripts and playerScripts:FindFirstChild("Controllers")
+    local module = controllers and controllers:FindFirstChild("FighterController")
+    if not module then return nil end
+    local ok, controller = pcall(require, module)
+    if not ok then return nil end
+    FighterController = controller
+    return FighterController
+end
+
+local function ReadFighterValue(fighter, key)
+    if not fighter or type(fighter.Get) ~= "function" then return nil end
+    local ok, value = pcall(fighter.Get, fighter, key)
+    if not ok then return nil end
+    return value
+end
+
+function FighterDataCache.ReadEntity(entity)
+    if not entity then return false end
+    local data = entity.Data
+    if type(data) == "table" then
+        return data.IsInvincible == true
+    end
+    return false
+end
+
+local function ResolveLocalFighter()
+    local controller = ResolveFighterController()
+    if not controller then return nil end
+    if controller.LocalFighter then return controller.LocalFighter end
+    if type(controller.GetFighter) == "function" then
+        local fighter = controller:GetFighter(LP)
+        if fighter then return fighter end
+    end
+    return nil
+end
+
+local function InitCharacter()
+    Char = LP.Character
+    if not Char then
+        Humanoid = nil
+        HumanoidRootPart = nil
+        return false
+    end
+    Humanoid = Char:FindFirstChildOfClass("Humanoid")
+    HumanoidRootPart = Char:FindFirstChild("HumanoidRootPart")
+    return Humanoid ~= nil and HumanoidRootPart ~= nil
+end
+
+local function IsAimbotCameraBoundToLocalCharacter(camera)
+    if not camera or not Char or LP.Character ~= Char then return false end
+    local subject = camera.CameraSubject
+    if not subject then return false end
+    return subject == Char or subject:IsDescendantOf(Char)
+end
+
+local function IsAimbotCameraReady()
+    local camera = Workspace.CurrentCamera
+    if not camera then return false end
+    if not InitCharacter() or LP.Character ~= Char then return false end
+    if not Humanoid or Humanoid.Health <= 0 then return false end
+    if HumanoidRootPart and HumanoidRootPart.Anchored then return false end
+    if not IsAimbotCameraBoundToLocalCharacter(camera) then return false end
+    return true
+end
+
+local function IsAimbotGameReady()
+    local fighter = ResolveLocalFighter()
+    if not fighter then return false end
+    local entity = fighter.Entity
+    local model = entity and entity.Model
+    if not model or model ~= LP.Character then return false end
+    local duelState = FighterDataCache.LocalDuel
+    if duelState.Seeded then
+        if not duelState.IsInDuel and not duelState.IsInShootingRange then return false end
+    else
+        if ReadFighterValue(fighter, "IsInDuel") ~= true and ReadFighterValue(fighter, "IsInShootingRange") ~= true then return false end
+    end
+    return true
+end
+
+local function ResolveRivalsInventoryItemName(item)
+    local itemType = typeof(item)
+    if itemType == "string" then return item ~= "" and item or nil end
+    if itemType == "Instance" then return item.Name ~= "" and item.Name or nil end
+    if itemType ~= "table" then return nil end
+    if type(item.Name) == "string" and item.Name ~= "" then return item.Name end
+    local info = item.Info
+    if type(info) == "table" and type(info.Name) == "string" and info.Name ~= "" then return info.Name end
+    if type(item.ItemName) == "string" and item.ItemName ~= "" then return item.ItemName end
+    if type(item.Type) == "string" and item.Type ~= "" then return item.Type end
+    return nil
+end
+
+local function ResolveRivalsFighterLoadoutNames(fighter)
+    local loadoutNames = {}
+    local function addName(name)
+        if type(name) == "string" and name ~= "" then loadoutNames[name] = true end
+    end
+    local inventory = fighter.Loadout or fighter.Slots or fighter.Items or fighter.EquippedItems
+    if type(inventory) == "table" then
+        for _, item in pairs(inventory) do
+            addName(ResolveRivalsInventoryItemName(item))
+        end
+    end
+    local lastPickedWeapons = fighter and fighter.Data and fighter.Data.LastPickedWeapons
+    if type(lastPickedWeapons) == "table" then
+        for _, itemName in ipairs(lastPickedWeapons) do
+            addName(itemName)
+        end
+    end
+    return loadoutNames
+end
+
+local function ReadItemValue(item, key)
+    if not item or type(item.Get) ~= "function" then return nil end
+    local ok, value = pcall(item.Get, item, key)
+    if not ok then return nil end
+    return value
+end
+
+local function ResolveRivalsFighterEquippedItemName(fighter)
+    local equippedName = ResolveRivalsInventoryItemName(fighter and fighter.EquippedItem)
+    if equippedName then return equippedName end
+    local equippedItemId = fighter and fighter.Data and fighter.Data.EquippedItemID
+    if type(equippedItemId) ~= "string" or equippedItemId == "" then return nil end
+    local inventory = fighter.Loadout or fighter.Slots or fighter.Items or fighter.EquippedItems
+    if type(inventory) ~= "table" then return nil end
+    for _, item in pairs(inventory) do
+        if type(item) == "table" then
+            local itemId = ReadItemValue(item, "ObjectID")
+            if itemId == nil and type(item.Data) == "table" then itemId = item.Data.ObjectID end
+            if itemId == equippedItemId then
+                return ResolveRivalsInventoryItemName(item)
+            end
+        end
+    end
+    return nil
+end
+
+local function EvaluateRivalsRiotShieldChecker(player, character, observerPosition)
+    observerPosition = observerPosition or (HumanoidRootPart and HumanoidRootPart.Position)
+    if not player or typeof(observerPosition) ~= "Vector3" then return {IgnoreTarget = false} end
+    character = character or player.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not character or not rootPart or not rootPart.Parent then return {IgnoreTarget = false} end
+    local fighter = TrackedFightersByPlayer[player]
+    if not fighter then
+        local controller = ResolveFighterController()
+        if controller and type(controller.GetFighter) == "function" then
+            fighter = controller:GetFighter(player)
+            if not fighter then fighter = controller:GetFighter(character) end
+        end
+    end
+    if not fighter then return {IgnoreTarget = false} end
+    local loadoutNames = ResolveRivalsFighterLoadoutNames(fighter)
+    local hasShieldInLoadout = loadoutNames["Riot Shield"] == true
+    local equippedName = ResolveRivalsFighterEquippedItemName(fighter)
+    local isShieldEquipped = nil
+    if equippedName then isShieldEquipped = equippedName == "Riot Shield" end
+    local directionToLocal = observerPosition - rootPart.Position
+    if directionToLocal.Magnitude > 0.001 then directionToLocal = directionToLocal.Unit else directionToLocal = rootPart.CFrame.LookVector end
+    local facingDot = rootPart.CFrame.LookVector:Dot(directionToLocal)
+    local blocksFromFront = false
+    if isShieldEquipped == true and facingDot >= 0 then blocksFromFront = true end
+    local blocksFromBack = false
+    if hasShieldInLoadout and isShieldEquipped == false and facingDot <= 0 then blocksFromBack = true end
+    return {IgnoreTarget = blocksFromFront or blocksFromBack}
+end
+
+local function ShouldIgnoreRivalsRiotShieldTarget(player, character, localItem)
+    if not player or not (Toggles.CheckRiotShield and Toggles.CheckRiotShield.Value == true) then return false end
+    local localItemName = localItem and localItem.Name
+    if localItemName == "Flamethrower" or localItemName == "Exogun" or localItemName == "Spray" or localItemName == "Chainsaw" or localItemName == "Grenade Launcher" then return false end
+    return EvaluateRivalsRiotShieldChecker(player, character, HumanoidRootPart and HumanoidRootPart.Position).IgnoreTarget
+end
+
+local function IsKatanaDeflectActive(item)
+    if not item or item.Name ~= "Katana" then return false end
+    local now = tick()
+    local attackCooldown = rawget(item, "_attack_cooldown")
+    local deflectCooldown = rawget(item, "_deflect_cooldown")
+    local deflectHash = rawget(item, "_deflect_hash")
+    return type(attackCooldown) == "number" and attackCooldown > now and type(deflectCooldown) == "number" and deflectCooldown > now and type(deflectHash) == "number" and deflectHash % 2 == 1
+end
+
+local function ShouldIgnoreAimbotKatanaDeflectTarget(player, localItem)
+    if not player then return false end
+    if Toggles.CheckKatanaDeflect and Toggles.CheckKatanaDeflect.Value == false then return false end
+    local fighter = TrackedFightersByPlayer[player]
+    return IsKatanaDeflectActive(fighter and fighter.EquippedItem)
+end
+
+local function ShouldShow(player)
+    if player == LP then return false end
+    local myTeam = LP:GetAttribute("TeamID")
+    local theirTeam = player:GetAttribute("TeamID")
+    if myTeam and theirTeam then return myTeam ~= theirTeam end
+    if player.Team == nil or LP.Team == nil then return true end
+    return player.Team ~= LP.Team
+end
+
+local function GetAimbotPointerPosition()
+    local cam = Workspace.CurrentCamera
+    if cam then
+        local v = cam.ViewportSize
+        return Vector2.new(v.X * 0.5, v.Y * 0.5)
+    end
+    return UserInputService:GetMouseLocation()
+end
+
+local function IsVisible(character, point)
+    local cam = Workspace.CurrentCamera
+    if not cam or typeof(point) ~= "Vector3" or not Char then return false end
+    local origin = cam.CFrame.Position
+    local dir = point - origin
+    if dir.Magnitude <= 0 then return false end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {Char, character}
+    return Workspace:Raycast(origin, dir, params) == nil
+end
+
+local function GetTargetParts(model, aimPart)
+    if not model or not model:IsA("Model") then return {} end
+    local parts = {}
+    local function add(name)
+        local p = model:FindFirstChild(name)
+        if p and p:IsA("BasePart") then table.insert(parts, p) end
+    end
+
+    if aimPart == "Head" then
+        add("HitboxHead")
+    elseif aimPart == "Body" then
+        add("HitboxBody")
+    elseif aimPart == "Closest" then
+        add("HitboxBody")
+        add("HitboxHead")
+    else
+        add("HitboxHead")
+        add("HitboxBody")
+    end
+
+    if #parts == 0 then add("HumanoidRootPart") end
+    return parts
+end
+
+local function GetVisiblePointOnPart(subject, part)
+    local points = {part.Position}
+    if part.Name == "HitboxHead" or part.Name == "HitboxBody" then
+        local cf, sz = part.CFrame, part.Size * 0.5
+        local ix, iy, iz = sz.X * 0.9, sz.Y * 0.9, sz.Z * 0.9
+        local function add(x, y, z)
+            table.insert(points, cf:PointToWorldSpace(Vector3.new(x, y, z)))
+        end
+        if part.Name == "HitboxHead" then
+            add(0, sz.Y, 0)
+            add(0, iy * 0.82, iz * 0.45)
+            add(0, iy * 0.82, -iz * 0.45)
+            add(ix * 0.55, iy * 0.78, 0)
+            add(-ix * 0.55, iy * 0.78, 0)
+        else
+            add(ix, 0, 0)
+            add(-ix, 0, 0)
+            add(0, iy, 0)
+            add(0, -iy, 0)
+            add(0, 0, iz)
+            add(0, 0, -iz)
+        end
+    end
+    for _, p in ipairs(points) do
+        if IsVisible(subject, p) then return p end
+    end
+    return nil
+end
+
+local function BuildTargetInfo(model, player, aimPart, mousePos, cam)
+    if not model or not model.Parent then return nil end
+    if player then
+        local hum = model:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then return nil end
+        if ShouldIgnoreAimbotKatanaDeflectTarget(player, nil) then return nil end
+        if ShouldIgnoreRivalsRiotShieldTarget(player, model, nil) then return nil end
+    end
+
+    cam = cam or Workspace.CurrentCamera
+    if not cam then return nil end
+
+    local ignoreFov = Toggles.IgnoreFOV.Value
+    local fovRadius = Options.FOVRadius.Value
+    local maxDist = 1000
+    local rootPos = HumanoidRootPart and HumanoidRootPart.Position or nil
+
+    local bestPart, bestWorld, bestVisible = nil, nil, false
+    for _, part in ipairs(GetTargetParts(model, aimPart)) do
+        local world = GetVisiblePointOnPart(model, part)
+        if world then
+            bestPart, bestWorld, bestVisible = part, world, true
+            break
+        elseif not bestPart then
+            bestPart, bestWorld = part, part.Position
+        end
+    end
+    if not bestPart or not bestWorld then return nil end
+    if not bestVisible then return nil end
+
+    local worldDist = 0
+    if rootPos then
+        local delta = bestWorld - rootPos
+        local d2 = delta:Dot(delta)
+        if d2 > maxDist * maxDist then return nil end
+        worldDist = math.sqrt(d2)
+    end
+
+    local screenPos, onScreen = cam:WorldToViewportPoint(bestWorld)
+    local onScr = onScreen and screenPos.Z > 0
+    if not ignoreFov and not onScr then return nil end
+
+    local screenVec = Vector2.new(screenPos.X, screenPos.Y)
+    local screenDist = (screenVec - mousePos).Magnitude
+    if not ignoreFov and screenDist > fovRadius then return nil end
+
+    return {
+        model = model,
+        part = bestPart,
+        player = player,
+        worldPos = bestWorld,
+        worldDist = worldDist,
+        screenDist = screenDist,
+        visible = true,
+    }
+end
+
+local function GetBestTarget()
+    local aimPart = Options.AimPart.Value
+    local mousePos = GetAimbotPointerPosition()
+    local cam = Workspace.CurrentCamera
+    if not cam then return nil end
+
+    local best = nil
+
+    local controller = ResolveFighterController()
+    if controller then
+        for _, fighter in ipairs(controller.Objects or {}) do
+            local player = fighter.Player
+            if player and player ~= LP and player.Parent == Players and ShouldShow(player) then
+                local entity = fighter.Entity
+                local model = entity and entity.Model
+                if model and model.Parent and not FighterDataCache.ReadEntity(entity) then
+                    local info = BuildTargetInfo(model, player, aimPart, mousePos, cam)
+                    if info then
+                        if not best then
+                            best = info
+                        else
+                            local priority = Options.Priority.Value
+                            if priority == "Crosshair" then
+                                if info.screenDist < best.screenDist then best = info end
+                            elseif priority == "Low Health" then
+                                local h1 = model:FindFirstChild("Humanoid").Health
+                                local h2 = best.model:FindFirstChild("Humanoid").Health
+                                if h1 < h2 then best = info end
+                            elseif priority == "Threat" then
+                                local s1 = info.worldDist - info.model:FindFirstChild("Humanoid").Health * 0.5
+                                local s2 = best.worldDist - best.model:FindFirstChild("Humanoid").Health * 0.5
+                                if s1 < s2 then best = info end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function PredictAimPosition(target)
+    if not Toggles.Prediction.Value then return target.worldPos end
+    local part = target.part
+    local vel = part.AssemblyLinearVelocity
+    if not vel or vel.Magnitude < 0.1 then return target.worldPos end
+
+    local dist = (part.Position - Workspace.CurrentCamera.CFrame.Position).Magnitude
+    local travelTime = dist / 500
+    local prediction = Options.PredictionAmount.Value
+    return target.worldPos + vel * (travelTime * prediction)
+end
+
+local function WrapAngle(a)
+    return (a + math.pi) % (2 * math.pi) - math.pi
+end
+
+local function SmoothRotation(current, target, alpha, mode, isYaw)
+    local delta = target - current
+    if isYaw then
+        delta = WrapAngle(delta)
+    end
+    if mode == "Snap" then
+        return current + delta
+    elseif mode == "Linear" then
+        return current + delta * alpha
+    elseif mode == "EaseOut" then
+        local t = 1 - (1 - alpha) ^ 3
+        return current + delta * t
+    end
+    return current + delta * (1 - math.exp(-alpha * 8))
+end
+
+local function ResolveCameraController()
+    if not ReplicatedStateReady then return nil end
+    local playerScripts = LP:FindFirstChild("PlayerScripts")
+    local controllers = playerScripts and playerScripts:FindFirstChild("Controllers")
+    local cameraControllerModule = controllers and controllers:FindFirstChild("CameraController")
+    if not cameraControllerModule then return nil end
+    local ok, cameraController = pcall(require, cameraControllerModule)
+    if not ok or type(cameraController) ~= "table" then return nil end
+    return cameraController
+end
+
+local function UpdateCameraAim(dt)
+    if not IsAimbotCameraReady() or not IsAimbotGameReady() then return end
+
+    local target = GetBestTarget()
+    if not target then return end
+
+    local cam = Workspace.CurrentCamera
+    local aimPos = PredictAimPosition(target)
+
+    local camCtrl = ResolveCameraController()
+    if not camCtrl or type(camCtrl.SetRotation) ~= "function" then return end
+
+    local curRot = rawget(camCtrl, "Rotation")
+    if typeof(curRot) ~= "Vector2" then return end
+
+    local targetCF = CFrame.lookAt(cam.CFrame.Position, aimPos)
+    local tp, ty = targetCF:ToOrientation()
+
+    if Toggles.InvertPitch and Toggles.InvertPitch.Value then
+        tp = -tp
+    end
+    if Toggles.InvertYaw and Toggles.InvertYaw.Value then
+        ty = -ty
+    end
+
+    local speed = Options.AimSpeed.Value / 100
+    local alpha = math.clamp(speed * dt * 10, 0, 1)
+    if alpha <= 0 then alpha = 0.01 end
+    local mode = Options.Smoothing.Value
+
+    local newPitch = SmoothRotation(curRot.X, tp, alpha, mode, false)
+    local newYaw = SmoothRotation(curRot.Y, ty, alpha, mode, true)
+
+    camCtrl:SetRotation(Vector2.new(newPitch, newYaw))
+end
+
+local fovCircle = Drawing and Drawing.new("Circle")
+if fovCircle then
+    fovCircle.Filled = false
+    fovCircle.NumSides = 48
+    fovCircle.Thickness = 1.5
+    fovCircle.Transparency = 0.72
+    fovCircle.Color = Color3.fromRGB(255, 70, 70)
+    fovCircle.Visible = false
+end
+
+local function UpdateFOVCircle()
+    if not fovCircle then return end
+    local show = Toggles.ShowFOV.Value
+    local ignoreFov = Toggles.IgnoreFOV.Value
+    if not show or ignoreFov then
+        fovCircle.Visible = false
+        return
+    end
+    fovCircle.Position = GetAimbotPointerPosition()
+    fovCircle.Radius = Options.FOVRadius.Value
+    fovCircle.Visible = true
+end
+
+local function RegisterAimbotFighter(fighter)
+    local player = fighter and fighter.Player
+    if not player or player == LP then return end
+    TrackedFightersByPlayer[player] = fighter
+    FighterDataCache.Cache[fighter] = FighterDataCache.ReadEntity(fighter.Entity)
+end
+
+local function UnregisterAimbotFighter(fighter)
+    local player = fighter and fighter.Player
+    if not player then return end
+    TrackedFightersByPlayer[player] = nil
+end
+
+local function EnsureAimbotTargetTracking()
+    local fighterController = ResolveFighterController()
+    if not fighterController then return end
+    LocalFighterController = fighterController
+    for _, fighter in ipairs(fighterController.Objects or {}) do
+        RegisterAimbotFighter(fighter)
+    end
+    if not _G._aimbotTrackingConnected then
+        _G._aimbotTrackingConnected = true
+        fighterController.ObjectAdded:Connect(RegisterAimbotFighter)
+        fighterController.ObjectRemoved:Connect(UnregisterAimbotFighter)
+    end
+end
+
+local function Setup()
+    BeginReplicatedStateBoot()
+
+    task.spawn(function()
+        while not ReplicatedStateReady do
+            task.wait(0.1)
+        end
+        EnsureAimbotTargetTracking()
+        local fighter = ResolveLocalFighter()
+        if fighter then
+            FighterDataCache.LocalDuel.IsInDuel = ReadFighterValue(fighter, "IsInDuel") == true
+            FighterDataCache.LocalDuel.IsInShootingRange = ReadFighterValue(fighter, "IsInShootingRange") == true
+            FighterDataCache.LocalDuel.Seeded = true
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function(dt)
+        if not IsAimbotCameraReady() then return end
+        UpdateCameraAim(dt)
+        UpdateFOVCircle()
+    end)
+
+    LP.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        local fighter = ResolveLocalFighter()
+        if fighter then
+            FighterDataCache.LocalDuel.IsInDuel = ReadFighterValue(fighter, "IsInDuel") == true
+            FighterDataCache.LocalDuel.IsInShootingRange = ReadFighterValue(fighter, "IsInShootingRange") == true
+            FighterDataCache.LocalDuel.Seeded = true
+        end
+    end)
+
+    Library:OnUnload(function()
+        if fovCircle then fovCircle:Remove() end
+    end)
+end
+
+Setup()
+
+pcall(function()
+    SaveManager:LoadAutoloadConfig()
+end)
